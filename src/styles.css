@@ -759,3 +759,8 @@ a { color: #a998ff; text-decoration: none; } a:hover { text-decoration: underlin
 .empty-list { padding-top:45px; }.empty-list b { display:block; color:#d2d8e7; }.empty-list p { margin:5px 0 15px; }.empty-graphic { display:grid; place-items:center; margin:0 auto 14px; width:46px; height:46px; border-radius:14px; color:#8d7bd0; background:#7c5cff12; font-size:21px; }
 .inspector-heading { display:flex; justify-content:space-between; padding:20px 16px; color:#8792a7; letter-spacing:.12em; font-size:10px; font-weight:700; border-bottom:1px solid var(--line); }.inspector-empty { padding:55px 24px; text-align:center; font-size:12px; color:#8992a8; }.inspector-empty b { color:#d4d9e5; }.inspector-empty p { line-height:1.7; }.inspector-tip { display:flex; gap:10px; padding:14px; margin: auto 14px 16px; border:1px solid #7c5cff30; border-radius:10px; background:#7c5cff0c; color:#a997ff; font-size:12px; }.inspector-tip b { font-size:10px; letter-spacing:.1em; }.inspector-tip p { color:#8f99ae; font-size:11px; line-height:1.6; margin:5px 0 0; }.selected-name { font-weight:600; font-size:15px; margin-bottom:4px; }
 @media(max-width:600px) { .top-note, #help {display:none}.topbar {padding:0 10px}.brand small {display:none}.transport {gap:4px}.transport .time {min-width:70px;font-size:10px}.stage-empty h1 {font-size:25px}.stage-empty {padding-bottom:45px}.inspector {display:none} }
+
+/* Keep Mixamo import feedback visible even when catalog results scroll. */
+.modal-foot.mixamo-footer { align-items: center; }
+.mixamo-footer #mixamo-status { flex: 1; min-width: 0; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.mixamo-footer #mixamo-status.error { color: #ff9aae; }

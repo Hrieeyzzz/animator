@@ -56,7 +56,7 @@ function addItem(folder, i) {
   state.sequence.push({id:nextId('clip'), sourceFolder:folder.id, clipIndex:i, name: /^(mixamo\.com|animation|take 001)$/i.test(name) ? folder.name.replace(/\.[^.]+$/, '') : name, trimStart:0, trimEnd:1, rootMotion:true, loop:false});
   selected = state.sequence.at(-1).id;
 }
-async function importAnimations(files) {
+async function importAnimations(files, { throwOnError = false } = {}) {
   if (!state.model) { toast('Upload your character first.', 'err'); return; }
   let count = 0;
   for (const file of files) {
@@ -67,7 +67,7 @@ async function importAnimations(files) {
       if (!sourceBones.length) throw new Error('No animation skeleton found. Use Mixamo FBX without skin.');
       for (const bone of sourceBones) bone.name = safeNodeName(bone);
       addLibrary(file, object, animations); count += animations.length;
-    } catch (err) { console.error(err); toast(`${file.name}: ${err.message}`, 'err', 8000); }
+    } catch (err) { console.error(err); if (throwOnError) throw new Error(`Could not import ${file.name}: ${err.message}`, { cause: err }); toast(`${file.name}: ${err.message}`, 'err', 8000); }
   }
   state.ui.tab = 'sequence'; update();
   if (count) toast(`Added ${count} animation${count === 1 ? '' : 's'}`, 'ok');
@@ -150,14 +150,21 @@ function bridgeRequest(action, payload = {}) {
     function receive(e) {
       if (e.source !== window || e.origin !== location.origin || e.data?.source !== 'motion-studio-response' || e.data.id !== id) return;
       clearTimeout(timer); window.removeEventListener('message', receive);
-      if (e.data.response?.error) reject(new Error(e.data.response.error)); else resolve(e.data.response);
+      if (e.data.response?.error) reject(new Error(e.data.response.error));
+      else if (!e.data.response || typeof e.data.response !== 'object') reject(new Error('The extension returned no response. Reload the extension and both tabs, then try again.'));
+      else resolve(e.data.response);
     }
     window.addEventListener('message', receive);
     window.postMessage({source:'motion-studio-request',id,action,payload}, location.origin);
   });
 }
 function openMixamoBrowser() {
-  showModal('Browse Mixamo animations', `<p class="hint">Sign in to Mixamo in your own browser. This optional Chrome extension uses unofficial endpoints which may change. <a href="/mixamo-bridge.zip" download>Download extension ZIP</a> · <a href="https://www.mixamo.com/#/" target="_blank" rel="noopener noreferrer">Open Mixamo ↗</a></p><details class="bridge-help"><summary>Setup instructions</summary><ol class="help-list"><li>Unzip the extension, open <b>chrome://extensions</b>, enable Developer mode, and choose <b>Load unpacked</b>.</li><li>Sign in to Mixamo in another tab and select a rigged character.</li><li>In Mixamo, open browser Developer Tools → Network, select an animation and find the <code>character_id</code> in a product request. This is not a password or token.</li><li>Return to this app, open the extension, enter the character ID and choose <b>Connect this page</b>.</li></ol><p class="hint">Use the same character on Mixamo and in this app for best results. This bridge does not upload or auto-rig models. Never paste passwords or access tokens into the app.</p></details><div class="row" style="margin-top:14px"><input id="mixamo-query" type="search" placeholder="Search e.g. walking"><button class="btn primary" id="mixamo-search">Search</button></div><p class="hint" id="mixamo-status" role="status">Connect the extension, then search the Mixamo catalog.</p><div id="mixamo-results"></div><button class="btn tiny" id="mixamo-more" style="display:none">Load more</button><div class="row" style="margin-top:16px"><span class="hint grow" id="mixamo-count">0 selected</span><button class="btn primary" id="mixamo-add" disabled>Add selected</button></div>`);
+  showModal('Browse Mixamo animations', `<p class="hint">Sign in to Mixamo in your own browser. This optional Chrome extension uses unofficial endpoints which may change. <a href="/mixamo-bridge.zip" download>Download extension ZIP</a> · <a href="https://www.mixamo.com/#/" target="_blank" rel="noopener noreferrer">Open Mixamo ↗</a></p><details class="bridge-help"><summary>Setup instructions</summary><ol class="help-list"><li>Unzip the extension, open <b>chrome://extensions</b>, enable Developer mode, and choose <b>Load unpacked</b>.</li><li>Sign in to Mixamo in another tab and select a rigged character.</li><li>In Mixamo, open browser Developer Tools → Network, select an animation and find the <code>character_id</code> in a product request. This is not a password or token.</li><li>Return to this app, open the extension, enter the character ID and choose <b>Connect this page</b>.</li></ol><p class="hint">Use the same character on Mixamo and in this app for best results. This bridge does not upload or auto-rig models. Never paste passwords or access tokens into the app.</p></details><div class="row" style="margin-top:14px"><input id="mixamo-query" type="search" placeholder="Search e.g. walking"><button class="btn primary" id="mixamo-search">Search</button></div><div id="mixamo-results"></div><button class="btn tiny" id="mixamo-more" style="display:none">Load more</button><div class="row" style="margin-top:16px"><span class="hint grow" id="mixamo-count">0 selected</span><button class="btn primary" id="mixamo-add" disabled>Add selected</button></div>`);
+  // Keep progress and errors in the fixed footer, not above a potentially
+  // long scrolling list where failures used to be easy to miss.
+  const footer = document.querySelector('#modal-root .modal-foot');
+  footer.classList.add('mixamo-footer');
+  footer.insertAdjacentHTML('afterbegin', '<p id="mixamo-status" role="status" aria-live="polite">Connect the extension, then search the Mixamo catalog.</p>');
   let page = 1, query = '', busy = false;
   const selected = new Map();
   const status = document.querySelector('#mixamo-status');
@@ -171,7 +178,7 @@ function openMixamoBrowser() {
   const search = async (append = false) => {
     if (busy) return;
     if (!append) { page=1; query=$('#mixamo-query').value.trim(); $('#mixamo-results').innerHTML=''; }
-    status.textContent='Loading from Mixamo…'; $('#mixamo-search').disabled=true; $('#mixamo-more').disabled=true;
+    status.classList.remove('error'); status.textContent='Loading from Mixamo…'; $('#mixamo-search').disabled=true; $('#mixamo-more').disabled=true;
     try {
       const data=await bridgeRequest('search',{query,page});
       if (!document.querySelector('#mixamo-results')) return;
@@ -186,11 +193,12 @@ function openMixamoBrowser() {
       }
       const total=Number(data.pagination?.num_pages || 1); $('#mixamo-more').style.display=page<total?'':'none';
       updateSelection();
-    } catch(e) { status.textContent=e.message; if (append) page--; }
+    } catch(e) { status.classList.add('error'); status.textContent=e.message; if (append) page--; }
     finally { const searchButton=document.querySelector('#mixamo-search'); if(searchButton) searchButton.disabled=false; const more=document.querySelector('#mixamo-more'); if(more) more.disabled=false; }
   };
   add.onclick=async()=>{
-    if(!state.model){status.textContent='Upload a rigged character in the app first.';return;}
+    if(!state.model){status.textContent='Upload a rigged character in the app first, then try again.'; status.classList.add('error'); return;}
+    status.classList.remove('error');
     const modelId=state.model.id;
     const queue=[...selected.values()];
     busy=true; updateSelection();
@@ -198,27 +206,30 @@ function openMixamoBrowser() {
     document.querySelector('#mixamo-more').disabled=true;
     let imported=0;
     for (const [index,item] of queue.entries()) {
-      status.textContent=`Adding ${index+1} of ${queue.length}: ${item.name}…`;
+      status.textContent=`Adding ${index+1} of ${queue.length}: ${item.name}… Keep this window open.`;
+      add.textContent=`Adding ${index+1}/${queue.length}…`;
       try {
         if(state.model?.id!==modelId) throw new Error('The character changed. Uploads stopped.');
         const result=await bridgeRequest('download',{id:item.id,name:item.name});
         if(state.model?.id!==modelId) throw new Error('The character changed. Uploads stopped.');
+        if (typeof result.data !== 'string' || !result.data) throw new Error('Mixamo did not return an animation file. Check the character ID and try again.');
         const binary=atob(result.data); const bytes=new Uint8Array(binary.length);
         for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
-        const added=await importAnimations([new File([bytes],`${item.name.replace(/[\\/]/g,'_')}.fbx`,{type:'application/octet-stream'})]);
+        const added=await importAnimations([new File([bytes],`${item.name.replace(/[\\/]/g,'_')}.fbx`,{type:'application/octet-stream'})], {throwOnError:true});
         if (!added) throw new Error('Animation could not be imported.');
         selected.delete(item.id); imported++;
       } catch(e) {
+        status.classList.add('error');
         status.textContent=`Added ${imported} of ${queue.length}. ${item.name}: ${e.message} Remaining selections were kept for retry.`;
-        busy=false; updateSelection();
+        busy=false; add.textContent='Add selected'; updateSelection();
         const searchButton=document.querySelector('#mixamo-search'); if(searchButton) searchButton.disabled=false;
         const more=document.querySelector('#mixamo-more'); if(more) more.disabled=false;
         return;
       }
     }
-    status.textContent=`Added ${imported} animation${imported===1?'':'s'} to your character. Select one in the animation list to preview.`;
+    status.textContent=`Added ${imported} animation${imported===1?'':'s'}. Close this window to view the animation list.`;
     document.querySelectorAll('#mixamo-results input[type=checkbox]').forEach(input=>input.checked=false);
-    busy=false; updateSelection();
+    busy=false; add.textContent='Add selected'; updateSelection();
     const searchButton=document.querySelector('#mixamo-search'); if(searchButton) searchButton.disabled=false;
     const more=document.querySelector('#mixamo-more'); if(more) more.disabled=false;
   };
