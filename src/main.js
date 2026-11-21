@@ -146,13 +146,23 @@ render();
 function bridgeRequest(action, payload = {}) {
   return new Promise((resolve, reject) => {
     const id = crypto.randomUUID();
-    const timer = setTimeout(() => {window.removeEventListener('message', receive); reject(new Error('Extension did not respond. Install it and connect this app tab first.'));}, action === 'download' ? 140000 : 15000);
+    let invalidated = false;
+    const cleanup = () => { clearTimeout(timer); window.removeEventListener('message', receive); };
+    const timer = setTimeout(() => { cleanup(); reject(new Error(invalidated ? 'The extension was reloaded or removed. Refresh this Motion Studio tab, then reconnect.' : 'Extension did not respond. Make sure it is enabled, refresh this tab and reconnect.')); }, action === 'download' ? 140000 : 15000);
     function receive(e) {
       if (e.source !== window || e.origin !== location.origin || e.data?.source !== 'motion-studio-response' || e.data.id !== id) return;
-      clearTimeout(timer); window.removeEventListener('message', receive);
-      if (e.data.response?.error) reject(new Error(e.data.response.error));
-      else if (!e.data.response || typeof e.data.response !== 'object') reject(new Error('The extension returned no response. Reload the extension and both tabs, then try again.'));
-      else resolve(e.data.response);
+      const response = e.data.response;
+      const message = response?.error || '';
+      // An obsolete content script can reply alongside the active extension
+      // after an extension reload. Give a valid response time to arrive.
+      if (response?.code === 'BRIDGE_INVALIDATED' || /extension context invalidated|cannot read properties of undefined \(reading ['"]sendMessage['"]\)/i.test(message)) {
+        invalidated = true;
+        return;
+      }
+      cleanup();
+      if (message) reject(new Error(message));
+      else if (!response || typeof response !== 'object') reject(new Error('The extension returned no response. Reload the extension and both tabs, then try again.'));
+      else resolve(response);
     }
     window.addEventListener('message', receive);
     window.postMessage({source:'motion-studio-request',id,action,payload}, location.origin);
@@ -210,6 +220,7 @@ function openMixamoBrowser() {
       add.textContent=`Adding ${index+1}/${queue.length}…`;
       try {
         if(state.model?.id!==modelId) throw new Error('The character changed. Uploads stopped.');
+        await bridgeRequest('status');
         const result=await bridgeRequest('download',{id:item.id,name:item.name});
         if(state.model?.id!==modelId) throw new Error('The character changed. Uploads stopped.');
         if (typeof result.data !== 'string' || !result.data) throw new Error('Mixamo did not return an animation file. Check the character ID and try again.');
