@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Motion Studio Mixamo Bridge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Connect a user-approved Motion Studio page to your signed-in Mixamo tab.",
   "permissions": ["storage", "tabs", "scripting"],
   "host_permissions": ["https://www.mixamo.com/*"],
   "action": {"default_popup": "popup.html"},
   "background": {"service_worker": "background.js"},
-  "content_scripts": [{"matches": ["https://*.e2b.app/*", "http://localhost/*", "http://127.0.0.1/*"], "js": ["bridge.js"]}]
+  "content_scripts": [{"matches": ["https://animator-wine.vercel.app/*", "https://*.e2b.app/*", "http://localhost/*", "http://127.0.0.1/*"], "js": ["bridge.js"]}]
 }
