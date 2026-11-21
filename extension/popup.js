@@ -3,10 +3,10 @@ chrome.storage.local.get(['characterId','approvedOrigin']).then(data => { docume
 document.querySelector('#connect').onclick = async () => {
   const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
   let url; try { url = new URL(tab.url); } catch { status.textContent='Open Motion Studio first.'; return; }
-  const allowed = (url.protocol === 'https:' && url.hostname.endsWith('.e2b.app')) || (url.protocol === 'http:' && ['localhost','127.0.0.1'].includes(url.hostname));
+  const allowed = url.origin === 'https://animator-wine.vercel.app' || (url.protocol === 'https:' && url.hostname.endsWith('.e2b.app')) || (url.protocol === 'http:' && ['localhost','127.0.0.1'].includes(url.hostname));
   const characterId = document.querySelector('#character').value.trim();
-  if (!allowed) {status.textContent='Open Motion Studio on a supported preview or localhost first.';return;}
+  if (!allowed) {status.textContent='Open animator-wine.vercel.app, an Arena preview, or localhost first.';return;}
   if (!/^[a-zA-Z0-9_-]{8,80}$/.test(characterId)) {status.textContent='Enter a valid Mixamo character ID.';return;}
-  await chrome.storage.local.set({approvedOrigin:url.origin, characterId}); status.textContent=`Connected ${url.origin}. Return to the app and press Connect.`;
+  await chrome.storage.local.set({approvedOrigin:url.origin, characterId}); status.textContent=`Connected ${url.origin}. Return to the app and search in Browse Mixamo.`;
 };
 document.querySelector('#disconnect').onclick = async () => {await chrome.storage.local.remove(['approvedOrigin','characterId']);status.textContent='Disconnected.';};
