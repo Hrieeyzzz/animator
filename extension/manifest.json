@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Motion Studio Mixamo Bridge",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Connect a user-approved Motion Studio page to your signed-in Mixamo tab.",
   "permissions": ["storage", "tabs", "scripting"],
   "host_permissions": ["https://www.mixamo.com/*", "https://mixamo-storage-prod.s3-us-west-2.amazonaws.com/*", "https://mixamo-storage-prod.s3.us-west-2.amazonaws.com/*"],
