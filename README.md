@@ -19,7 +19,7 @@ Open the URL printed by Vite. `npm run build` creates a production build. Run th
 
 Files are processed locally in the browser. Mixamo is a separate Adobe service; the app does not sign in, search its catalog, or download its animations directly. Animation retargeting is best suited to matching Mixamo rigs; results can vary on other skeletons and should be checked in preview. External resources referenced by separate GLTF/FBX files are not supported; self-contained GLB is recommended. Export is GLB, not FBX. The Mixamo animation content is subject to Adobe's terms.
 
-For Unity, see [docs/unity.md](docs/unity.md) — import settings, the Avatar/Apply Root Motion rules, and the controller wiring to avoid a T-posed walk.
+For Unity (glTFast), see [docs/unity.md](docs/unity.md) — the Animation (Legacy vs Mecanim) setting, Animator controller wiring, and the root-motion rules to avoid a T-posed walk.
 
 ## Experimental Mixamo browser bridge
 

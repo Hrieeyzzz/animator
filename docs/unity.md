@@ -1,93 +1,108 @@
-# Unity setup for Motion Studio GLBs
+# Unity setup for Motion Studio GLBs (glTFast)
 
-Motion Studio exports **one GLB** with your model and each clip from your
-animation list as a separate animation. Unity imports all of it, but it does
-not wire anything up for you. If the Animator is not configured, the character
-stays in its bind pose (T-pose) no matter what your movement script does.
+Unity does **not** import `.glb` with its FBX/Model importer. It uses the
+**glTFast** package (`com.unity.cloud.gltfast`), whose importer has no Rig /
+Humanoid / Generic "Animation Type" setting at all. If you're looking for a
+Rig tab, it doesn't exist — this page describes the actual knobs.
 
-This page covers the import settings and the two wiring mistakes that cause a
-"the character walks but stays in T-pose" result.
+A GLB from Motion Studio is imported as a **scene asset**; the clips are its
+sub-assets. The clip names are exactly the "Animation name" fields from the
+app's animation list.
 
-## 1. Import settings
+## 1. Pick the animation system (Settings tab)
 
-Select the GLB in the Project window and check the three tabs:
+Select the GLB → Inspector → **Settings** tab → the **`Animation`** dropdown:
 
-- **Rig** → set *Animation Type* to **Generic** (or **Humanoid** for a
-  character you want to retarget to other avatars). Turn on **Create From This
-  Model**, then **Apply**. An avatar is now generated as a child of the GLB
-  asset.
-- **Animation** → tick **Loop Time** on every locomotion / idle clip that
-  should repeat, and rename clips here if you want (the GLB clip names come
-  from the animation names in Motion Studio). **Apply**.
-- **Model** → leave everything default; export uses Y-up metres and 0.03-style
-  uniform scales are not required — but if your character looks tiny or huge,
-  this is the tab, and the exported GLB carries the model's own scale
-  untouched.
+- **`Legacy`** (what your project shows) — clips become legacy clips and the
+  importer adds an `Animation` component with every clip on it (clip slots in
+  Element 0..N, `Animation` set to index 0). `Play Automatically` is off, and
+  the legacy system silently ignores the `Animator` your script uses — so a
+  game object with an unchecked legacy `Animation` + an `Animator` with no
+  controller plays **nothing**. This is the most common cause of "walks but
+  stays in bind pose".
+- **`Mecanim`** (recommended) — clips become Mecanim clips, the importer adds
+  an **`Animator`** instead of the legacy `Animation` component, and **all
+  clips get `Loop Time = true` automatically** (no Animation tab needed).
+  Avatars are never created by glTFast and are **not needed**: these clips
+  bind to transform paths, so `Avatar = None` is correct, not a bug.
+- `None` — clips are not imported at all.
 
-## 2. Avatar on the Animator
+Then click **Apply** to reimport. After switching from Legacy to Mecanim,
+delete the scene instance/prefab you had and re-drag the model into the
+scene, so no stale legacy `Animation` component remains.
 
-Drag the model into the scene (this auto-assigns the generated avatar), **or**
-keep your existing prefab and drag the generated avatar from the GLB asset
-into the prefab's **Animator → Avatar** slot.
+Which to choose:
 
-`Avatar = None` is the single most common reason a skinned character never
-moves: the Animator can evaluate controller states but has no skeleton to
-drive, so every pose stays the bind pose.
+- If a movement script drives an `Animator` (`animator.Play(...)` /
+  `CrossFade(...)` with state names) → **Mecanim**.
+- If you prefer the legacy component → set `Animation = Legacy`, check
+  **Play Automatically**, delete/ignore the `Animator`, and play clips from
+  code with `animation.Play("Feminine Walk Forward")` — renaming state strings
+  like `Walk`/`Idle` does nothing for the legacy system.
 
-Then:
+## 2. The variants in detail (Mecanim path)
 
-- If your movement script translates the Transform itself (e.g. `CharacterController` / `transform.position`), **uncheck Apply Root Motion** so the script and the animation don't fight.
-- If you want the animation to move the character, **keep Apply Root Motion checked** and stop moving the Transform in the script. Pick one, not both — mixing them looks like sliding or jitter while walking.
+After switching to Mecanim and re-dragging the model in:
 
-## 3. Controller states
+1. **Expand the GLB asset in the Project window** — you'll see its
+   `AnimationClip` sub-assets. Note the exact clip names.
+2. **Create an Animator Controller** (right-click in Project → Create →
+   Animator Controller), and add states named **exactly** as the strings your
+   script uses (e.g. `Walk` and `Idle` for a simple locomotion switch, or
+   whatever `PlayerMovement` sets in its `Walk State` / `Idle State` fields).
+3. **Set each state's Motion** to the matching clip:
+   - `Walk` → e.g. `Feminine Walk Forward`
+   - `Idle` → any exported idle clip (export one, e.g. "Breathing Idle", if
+     it isn't in this GLB yet — otherwise the Idle state has nothing to play)
+4. **Assign the controller** to the Animator's **Controller** field on the
+   character.
+5. **Delete the legacy `Animation` component** if it's still around. The
+   Animator window shows the `Walk` state lighting up while you move if the
+   wiring is right; if it doesn't light up, the script's state name doesn't
+   match — always match the exact strings.
+6. No transitions are needed for a script-driven `animator.Play("Walk")`
+   switch; add transitions only if you use condition parameters/triggers.
 
-Open your Animator controller (`PlayerAnimator`). It needs states whose names
-match the strings your script plays (`walkState` / `idleState`, or whatever
-`animator.Play(...)` / `CrossFade(...)` is called with):
+## 3. Root motion: pick one owner
 
-- Create an empty state, name it **Walk**, set its **Motion** to the walk clip
-  (e.g. `Feminine Walk Forward`).
-- Create **Idle**, Motion = an idle clip. Note the exported GLB only contains
-  the clips you added in the app — if you never added an idle, export one and
-  re-import.
-- Add transitions if you use condition parameters, or leave a direct
-  `animator.Play("Walk")`-style script alone (no transitions needed for a
-  simple locomotion switch).
+- Script moves the transform (`CharacterController` / `transform.position`)
+  and the clip was exported **without** root motion (the app's **Include root
+  motion** unchecked → hip track dropped → baked "in place"). Then uncheck
+  **Apply Root Motion**. This is the recommended setup for a simple
+  CharacterController.
+- Script doesn't move the transform and the clip **has** hip translation
+  (exported with **Include root motion** checked). Then keep **Apply Root
+  Motion** checked. The Animator drives movement.
+- Mixing both (script translation **and** baked root motion **and** Apply
+  Root Motion on) looks like double-speed sliding/jittering.
+- Keeping **Include root motion** on while Apply Root Motion is **off** makes
+  the mesh walk forward in local space and snap back on every loop — also a
+  common surprise.
 
-Clip names in the GLB are exactly the "Animation name" fields shown in the
-app's animation list. If you see a mashed-up name like
-`Jog In Circle@Sitting Clap@Fallen Idle`, rename the items in the list before
-exporting (or rename in the Animation tab of the import settings).
+## 4. Clip names
 
-## 4. Root motion at export time
+Exported clip names come straight from the "Animation name" fields in
+Motion Studio's animation list. A name like
+`Jog In Circle@Sitting Clap@Fallen Idle` is the Mixamo file name used when
+no explicit name was set; rename the item in the app and re-export for sane
+Animator states.
 
-In Motion Studio each clip has **Include root motion**:
-
-- Checked (default): the hips carry their travel curve into the GLB. Good for
-  motion that should drive movement via Unity's Apply Root Motion.
-- Unchecked: the clip is baked in place (hip position track dropped). Good
-  for a script-driven `CharacterController` or `transform` movement with
-  Apply Root Motion off.
-
-Mixing these two — script moving the character *and* an in-place clip *and*
-Apply Root Motion on — is the second most common reason movement looks wrong
-(sliding/jitter), after the Avatar being None.
-
-## 5. Common symptoms
+## 5. Symptoms
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| Walks but stays in T-pose | Animator `Avatar = None`, or controller state has no Motion, or script plays a state name that does not exist | §1 Rig tab, §2 avatar, §3 state names |
-| Clip never plays, character snaps to a pose once | `Loop Time` off in Animation tab | §1 Animation tab |
-| Slides / double speed while walking | Transform moved by script **and** by root motion | §2 pick one root-motion owner |
-| Character explodes off-screen after a few frames | Root motion baked into clip + Apply Root Motion + script moving too | §4 export the clip in place, uncheck Apply Root Motion |
-| `Jog In Circle@Sitting Clap@Fallen Idle` clip name | Clip names come from list item names | Rename in app before export |
-| Script plays `Feminine Walk Forward` on legacy `Animation`, Animator unused | Components on one object drive different systems | Delete the legacy `Animation` component (it also has Play Automatically off) and keep only the Animator path |
+| Walks but stays in bind pose | Legacy clips never reach the Animator your script drives; or Mecanim clips + Animator with **Controller = None** | §1 switch to Mecanim (or delete Animator + use legacy `Play`), §2 assign controller |
+| State lights up/none in Animator, no motion | `Walk State` string doesn't match any state name | make the state name and the string identical |
+| Animations never loop | glTFast Mecanim clips loop automatically; you selected Legacy but expect Mecanim semantics | §1 Mecanim |
+| Double speed / sliding | script movement + baked root motion | §3 pick one owner |
+| Clip name `Jog In Circle@...` hard to use | list item names in app | rename + re-export |
+| No `Avatar` slot needed | glTFast never creates avatars; transform-path clips don't need one | ignore the Avatar field |
 
-## 6. Quick verification
+## 6. Fast verification
 
-1. Select the character in Play mode and open the **Animator** window: the
-   `Walk`/`Idle` state should light up when you move.
-2. If it never lights up, the script is playing a name that doesn't match a
-   state — check the exact strings.
-3. If it lights up but the mesh doesn't move, the Avatar is None.
+1. GLB → Settings → Animation = **Mecanim** → Apply; re-drag the model into
+   the scene.
+2. Animator window → move → watch `Walk` light up.
+3. Mesh animates → done. State lights up but mesh doesn't → the state's
+   Motion field is empty, or the clip binding paths don't match the rig.
+4. State doesn't light up → name mismatch between script and state.
