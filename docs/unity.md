@@ -99,6 +99,7 @@ Animator states.
 | State lights up/none in Animator, no motion | `Walk State` string doesn't match any state name | make the state name and the string identical |
 | Animations never loop | glTFast Mecanim clips loop automatically; you selected Legacy but expect Mecanim semantics | §1 Mecanim |
 | Double speed / sliding | script movement + baked root motion | §3 pick one owner |
+| Walks a few steps, then snaps back and forth | hip translation baked into clip (export **Include root motion** checked) while **Apply Root Motion** is off | §3 uncheck Include root motion on the clip, re-export; or keep root motion + Apply Root Motion + stop the script from translating |
 | Clip name `Jog In Circle@...` hard to use | list item names in app | rename + re-export |
 | No `Avatar` slot needed | glTFast never creates avatars; transform-path clips don't need one | ignore the Avatar field |
 
