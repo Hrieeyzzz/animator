@@ -130,3 +130,17 @@ collisions only exist against physics bodies. For this locomotion style add a
 4. In Update, feed movement through `controller.Move((planar + up * verticalVelocity) * dt)`
    and use `controller.isGrounded` for the jump/idle logic instead of a
    captured `groundY`.
+
+### Hierarchy checklist (common failure mode)
+
+- `Player` (scale 1, feet y=0) must be the **parent** of the imported GLB
+  object — with `CharacterController` + movement script on `Player`, and the
+  GLB's `Animator` left on the child. Moving an empty `Player` while the
+  model sits at the scene root looks exactly like "movement does nothing".
+- The `Terrain` must be a **root-level** object, never a child of the GLB
+  root — it would inherit the GLB's tiny scale and the character would sink
+  below/through the ground.
+- Delete the glTFast-created `Animator` on the wrapper if you added one; only
+  the Animator on the child drives bones.
+- Beware of stray empty GameObjects created while experimenting (e.g. named
+  like Idle/Walk/Run/Jump) — they confuse wiring; delete them.
