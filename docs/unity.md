@@ -100,6 +100,7 @@ Animator states.
 | Animations never loop | glTFast Mecanim clips loop automatically; you selected Legacy but expect Mecanim semantics | §1 Mecanim |
 | Double speed / sliding | script movement + baked root motion | §3 pick one owner |
 | Walks a few steps, then snaps back and forth | hip translation baked into clip (export **Include root motion** checked) while **Apply Root Motion** is off | §3 uncheck Include root motion on the clip, re-export; or keep root motion + Apply Root Motion + stop the script from translating |
+| "Still same" after re-exporting | the GLB in the project Assets folder wasn't actually replaced (Unity keeps the old imported asset), or the drift lives on a track other than `hips` (e.g. a root/Armature/`Node-0` node) | §3, and: drag the new GLB over the Assets file (same name = reimport), or export under a new filename and drag it in; check the toast the app shows after Export — it now lists any origin tracks still present |
 | Clip name `Jog In Circle@...` hard to use | list item names in app | rename + re-export |
 | No `Avatar` slot needed | glTFast never creates avatars; transform-path clips don't need one | ignore the Avatar field |
 

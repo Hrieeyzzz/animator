@@ -4,6 +4,7 @@ import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { Viewport } from './lib/viewport.js';
 import { loadFile, formatBytes, disposeObject } from './lib/loaders.js';
 import { collectBones, rigCoverage, safeNodeName, plainClipName } from './lib/retarget.js';
+import { remainingDriftTracks } from './lib/drift.js';
 import { state, update, subscribe, nextId, toast, clipForItem } from './state/store.js';
 import { icon } from './ui/icons.js';
 
@@ -135,6 +136,10 @@ $('#export').onclick=async()=>{
    viewport.invalidateCache();
    await new Promise(r=>setTimeout(r,20));
    const clips=state.sequence.map(item=>{const prepared=viewport.prepareItem(item);if(!prepared)throw new Error(`Missing clip: ${item.name}`);const clip=prepared.clip.clone();clip.name=item.name;return clip;});
+   // Self-check: a "in place" clip must not still carry origin translation.
+   const drifting=[];
+   state.sequence.forEach((item,i)=>{ if(item.rootMotion)return; const hits=remainingDriftTracks(clips[i]); if(hits.length) drifting.push(`${item.name} → ${hits.join(', ')}`); });
+   if(drifting.length) toast(`Exported, but some clips still contain an origin travel track: ${drifting.join('; ')}. The character may still drift in Unity — please report it.`,'err',12000);
    const buffer=await new GLTFExporter().parseAsync(state.model.root,{binary:true,animations:clips,trs:true,onlyVisible:false});
    const url=URL.createObjectURL(new Blob([buffer],{type:'model/gltf-binary'}));const a=document.createElement('a');a.href=url;a.download=state.model.name.replace(/\.[^.]+$/,'')+'-animated.glb';a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);update();toast(`Exported GLB with ${clips.length} clips`, 'ok');
  }catch(e){console.error(e);toast('Export failed: '+e.message,'err',8000);}

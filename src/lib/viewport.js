@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { retargetClip, collectBones } from './retarget.js';
+import { isInPlaceDropTrack } from './drift.js';
 import { clipForItem, sourceRootForItem, folderById, state, emit } from '../state/store.js';
 
 export class Viewport {
@@ -236,7 +237,7 @@ export class Viewport {
       let trimmed = trimClip(clip, item.trimStart, item.trimEnd);
       if (!item.rootMotion) {
         trimmed = trimmed.clone();
-        trimmed.tracks = trimmed.tracks.filter(t => !/hips\.position$/i.test(t.name));
+        trimmed.tracks = trimmed.tracks.filter(t => !isInPlaceDropTrack(t.name));
       }
       result = { clip: trimmed, matched: countBones(this.model.root), total: countBones(this.model.root) };
     } else {
