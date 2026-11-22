@@ -19,6 +19,8 @@ Open the URL printed by Vite. `npm run build` creates a production build. Run th
 
 Files are processed locally in the browser. Mixamo is a separate Adobe service; the app does not sign in, search its catalog, or download its animations directly. Animation retargeting is best suited to matching Mixamo rigs; results can vary on other skeletons and should be checked in preview. External resources referenced by separate GLTF/FBX files are not supported; self-contained GLB is recommended. Export is GLB, not FBX. The Mixamo animation content is subject to Adobe's terms.
 
+For Unity, see [docs/unity.md](docs/unity.md) — import settings, the Avatar/Apply Root Motion rules, and the controller wiring to avoid a T-posed walk.
+
 ## Experimental Mixamo browser bridge
 
 The optional Chrome extension in `extension/` can search Mixamo and request an animation using your own signed-in session. It uses undocumented Mixamo endpoints, not an official integration, and may stop working. It has not been tested with a live authenticated account. Install it by unzipping the app's bridge download and using Chrome's **Load unpacked** in Developer mode. Open and sign into Mixamo in a separate tab, select an already rigged character, then find its `character_id` in a Mixamo product request in browser Developer Tools. Open the extension on the Motion Studio tab, enter that ID, and explicitly connect the page. The bridge only accepts requests from the origin you approve, and does not send the Mixamo access token to Motion Studio. Disconnect using the extension popup.
