@@ -131,6 +131,21 @@ collisions only exist against physics bodies. For this locomotion style add a
    and use `controller.isGrounded` for the jump/idle logic instead of a
    captured `groundY`.
 
+## Automatic repair script
+
+`unity/MotionStudioPlayerSetup.cs` fixes the whole scene wiring in one click:
+it finds the character (skinned meshes), creates/uses a scale-1 `Player`
+wrapper, re-parents the character under it, moves a parented `Terrain` back to
+the scene root, removes the wrapper's redundant Animator, (re)configures the
+CharacterController, adds `PlayerMovement` (`unity/PlayerMovement.cs`) and
+wires its Animator field to the model child's Animator, turns off Apply Root
+Motion, snaps the feet to the terrain/0, and prints a full report including
+the controller's clips — plus a popup listing any remaining problems.
+
+Install: create `Assets/Editor/` in your Unity project, paste the file in,
+then use **Tools ▸ Motion Studio ▸ Fix Player Setup**. It creates objects and
+re-parents but never deletes anything except the wrapper's redundant Animator.
+
 ### Hierarchy checklist (common failure mode)
 
 - `Player` (scale 1, feet y=0) must be the **parent** of the imported GLB
