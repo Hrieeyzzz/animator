@@ -61,7 +61,11 @@ After switching to Mecanim and re-dragging the model in:
    wiring is right; if it doesn't light up, the script's state name doesn't
    match — always match the exact strings.
 6. No transitions are needed for a script-driven `animator.Play("Walk")`
-   switch; add transitions only if you use condition parameters/triggers.
+   switch. If the controller shows arrows between locomotion states (made by
+   accident with Ctrl/right-drag), click each arrow and press **Delete** —
+   a transition with no conditions auto-advances clips on its own and
+   overrides what the script chooses. Add transitions only if you switch to
+   condition-parameter/trigger logic.
 
 ## 3. Root motion: pick one owner
 
