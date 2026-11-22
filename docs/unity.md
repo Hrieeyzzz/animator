@@ -112,3 +112,21 @@ Animator states.
 3. Mesh animates → done. State lights up but mesh doesn't → the state's
    Motion field is empty, or the clip binding paths don't match the rig.
 4. State doesn't light up → name mismatch between script and state.
+
+## Collisions: the character walks through everything
+
+A script that writes `transform.position` **ignores colliders entirely** —
+collisions only exist against physics bodies. For this locomotion style add a
+`CharacterController` (kinematic) and drive it with `Move()` instead:
+
+1. Wrap the GLB prefab in an empty `Player` object (scale 1, feet at y=0) and
+   make the GLB a child — the GLB root imports at a tiny scale (e.g. 0.009),
+   so the controller's Height/Radius/Center should be authored on the
+   scale-1 parent, e.g. Height 1.8, Radius 0.35, Center (0, 0.9, 0).
+2. Add PlayerMovement to `Player`; keep the Animator on the child; drag the
+   child Animator into the script's Animator field.
+3. Ensure the floor has a collider: `Plane` primitive and `Terrain` have one
+   built in; a custom floor FBX needs a Mesh Collider.
+4. In Update, feed movement through `controller.Move((planar + up * verticalVelocity) * dt)`
+   and use `controller.isGrounded` for the jump/idle logic instead of a
+   captured `groundY`.
